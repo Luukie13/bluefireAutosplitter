@@ -9,7 +9,14 @@ startup
 vars.menuTime = 0;
 }
 
-
+start
+{
+	if (current.TotalCentiseconds >= 1
+	&& current.TotalCentiseconds <= 100)
+		{
+		return true;
+		}
+}
 
 gameTime
 {
