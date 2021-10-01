@@ -1,6 +1,6 @@
 state("PROA34-Win64-Shipping")
 {
-	float TotalCentiseconds : 0x42C4E20, 0x30, 0xE8, 0x258, 0x10B8, 0x260;
+	float TotalCentiseconds : 0x42C4EA0, 0x30, 0xE8, 0x258, 0x10B8, 0x260;
 	//the timer, starts at milliseconds, stored as 4byte and is slightly off displayed timer
 }
 
