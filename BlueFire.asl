@@ -6,37 +6,63 @@ state("PROA34-Win64-Shipping")
 
 startup
 {
-vars.menuTime = 0;
+	vars.Log = (Action<object>)((output) => print("[Blue Fire] " + output));
+	vars.MenuTime = 0f;
+}
+
+init
+{
+	vars.CancelSource = new CancellationTokenSource();
+	vars.ScanThread = new Thread(() =>
+	{
+		vars.Log("Starting scan thread.");
+
+		var gWorld = IntPtr.Zero;
+		var gWorldTrg = new SigScanTarget(10, "80 7C 24 ?? 00 ?? ?? 48 8B 3D ???????? 48")
+		{ OnFound = (p, s, ptr) => ptr + 0x4 + p.ReadValue<int>(ptr) };
+
+		var scanner = new SignatureScanner(game, modules.First().BaseAddress, modules.First().ModuleMemorySize);
+		var token = vars.CancelSource.Token;
+
+		while (!token.IsCancellationRequested)
+		{
+			if (gWorld == IntPtr.Zero && (gWorld = scanner.Scan(gWorldTrg)) != IntPtr.Zero)
+			{
+				vars.Data = new MemoryWatcherList
+				{
+					new MemoryWatcher<float>(new DeepPointer(gWorld, 0x30, 0xE8, 0x258, 0x10B8, 0x260)) { Name = "TotalCentiseconds" }
+				};
+
+				vars.Log("Found GWorld at 0x" + gWorld.ToString("X") + ".");
+				break;
+			}
+
+			Thread.Sleep(2000);
+		}
+
+		vars.Log("Exitng scan thread.");
+	});
+
+	vars.ScanThread.Start();
+}
+
+update
+{
+	if (vars.ScanThread.IsAlive) return false;
+
+	vars.Data.UpdateAll(game);
+	current.Centiseconds = vars.Data["TotalCentiseconds"].Current;
 }
 
 start
 {
-	if (current.TotalCentiseconds >= 1
-	&& current.TotalCentiseconds <= 100)
-		{
-		return true;
-		}
+	return old.Centiseconds < 1f && current.Centiseconds >= 1f;
 }
 
 gameTime
 {
-if (current.TotalCentiseconds != 0) {
-	print("a" + current.TotalCentiseconds);
-	return TimeSpan.FromSeconds(current.TotalCentiseconds / 100f);
-	}
-else if (old.TotalCentiseconds == 0 ) {
-	print("c" + vars.menuTime);
-	return TimeSpan.FromSeconds(vars.menuTime / 100f);
-	}
-else if (current.TotalCentiseconds == 0 ) {
-	print("b" + old.TotalCentiseconds);
-	vars.menuTime = old.TotalCentiseconds;
-	return TimeSpan.FromSeconds(vars.menuTime / 100f);
-} else { 
-	print ("d" + current.TotalCentiseconds);
-	return TimeSpan.FromSeconds(current.TotalCentiseconds / 100f); 
-	//if something goes wrong
-	}
+	if (current.Centiseconds > 0)
+		return TimeSpan.FromSeconds(current.Centiseconds / 100f);
 }
 
 isLoading
